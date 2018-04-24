@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Game Menu</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            .button {
+                background-color: greenyellow;
+                border: none;
+                color: #84929D;
+                padding: 15px 25px;
+                text-align: center;
+                font-size: 16px;
+                cursor: pointer;
+                font: Consolas;
+                position: relative;
+                top: -200px;
+                left:  -512px;
+                margin-right: 128px;
+            }
+            .button:hover {
+                background-color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <img src="https://cdn.alza.cz/Foto/ImgGalery/Image/Article/alzak-nevi.jpg" alt="Alzák neví" width="640" height="480">
+        <button id="PlayGame" class="button" onmousedown="start()">Play Game</button>
+        <button id="ShowScore" class="button">Show Highscores</button>
+        <script src="game.js">
+            draw();
+        </script>
+    </body>
+</html>
