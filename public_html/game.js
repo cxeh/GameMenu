@@ -4,6 +4,7 @@ let ctx = canvas.getContext("2d");
 let ground1 = [];
 let ground2 = [];
 let ground3 = [];
+let currentLevel = 1;                          // player is starting at the middle line
 let platformWidth = 32;
 let platformHeight = canvas.height - platformWidth * 4;
 let requestAnimFrame = (function(){
@@ -12,18 +13,56 @@ let requestAnimFrame = (function(){
             window.mozRequestAnimationFrame    ||
             window.oRequestAnimationFrame      ||
             window.msRequestAnimationFrame     ||
-            function(callback, element){
+            function(callback){
                 window.setTimeout(callback, 1000 / 60);
             };
 })();
 
 let player = {};
-player.currentLevel = 0;
 player.width  = 64;
 player.height = 64;
 player.speed  = 6;
 player.draw = function(yCoord) {
     ctx.drawImage(assetLoader.images.avatar_normal, 64, yCoord);
+};
+let switchCounter = 0;
+player.update = function(currentLevel) {
+    if((KEY_STATUS.w || KEY_STATUS.up) && currentLevel !== 2 && switchCounter === 0) {
+        currentLevel++;
+        switchCounter = 21;
+    } else if((KEY_STATUS.s || KEY_STATUS.down) && currentLevel !== 0 && switchCounter === 0) {
+        currentLevel--;
+        switchCounter = 21;
+    }
+    switchCounter = Math.max(switchCounter-1, 0);
+    return currentLevel;
+};
+
+let KEY_CODES = {
+    38: 'up',
+    40: 'down',
+    83: 's',
+    87: 'w'    
+};
+let KEY_STATUS = {};
+for(let code in KEY_CODES) {
+    if(KEY_CODES.hasOwnProperty(code)) {
+        KEY_STATUS[KEY_CODES[code]] = false;
+    }
+}
+document.onkeydown = function(e) {
+    let keyCode = (e.keyCode) ? e.keyCode : e.charCode;
+    if(KEY_CODES[keyCode]) {
+        e.preventDefault();
+        KEY_STATUS[KEY_CODES[keyCode]] = true;
+    }
+};
+document.onkeyup = function(e) {
+    let keyCode = (e.keyCode) ? e.keyCode : e.charCode;
+    if(KEY_CODES[keyCode]) {
+        e.preventDefault();
+        KEY_STATUS[KEY_CODES[keyCode]] = false;
+    }
 };
   
 let assetLoader = (function() {
@@ -116,7 +155,7 @@ let background = (function() {
  * Start the game - reset all variables and entities, spawn platforms and water.
  */
 function startGame() {
-    for(let i=0, length = Math.floor(canvas.width / platformWidth)+1; i<length; i++) {
+    for(let i=0, length = Math.floor(canvas.width / platformWidth)+2; i<length; i++) {
         ground1[i] = {"x": i * platformWidth, "y": canvas.height-platformWidth};
         ground2[i] = {"x": i * platformWidth, "y": canvas.height*(2/3)-platformWidth};
         ground3[i] = {"x": i * platformWidth, "y": canvas.height*(1/3)-platformWidth};
@@ -154,6 +193,7 @@ function animate() {
         ground3.shift();
         ground3.push({"x": ground3[ground3.length-1].x + platformWidth, "y": canvas.height*(1/3)-platformWidth});
     }
-    player.draw(canvas.height*(2/3)-platformWidth*3);           // Note to self: y coord will be changing
+    currentLevel = player.update(currentLevel);                                // try with currentLevel being player property
+    player.draw(canvas.height*((3-currentLevel)/3)-platformWidth*3);           // Note to self: y coord will be changing
 }
 assetLoader.downloadAll();
