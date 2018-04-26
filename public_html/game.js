@@ -1,12 +1,18 @@
+// getting access to the canvas and its drawing context
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
+// introducing global game variables
 let ground1 = [];
 let ground2 = [];
 let ground3 = [];
 let currentLevel = 1;                          // player is starting at the middle line
 let platformWidth = 32;
 let platformHeight = canvas.height - platformWidth * 4;
+
+let obstacles = [];
+
+// requesting animation frames
 let requestAnimFrame = (function(){
     return  window.requestAnimationFrame       ||
             window.webkitRequestAnimationFrame ||
@@ -18,26 +24,45 @@ let requestAnimFrame = (function(){
             };
 })();
 
-let player = {};
-player.width  = 64;
-player.height = 64;
-player.speed  = 6;
-player.draw = function(yCoord) {
-    ctx.drawImage(assetLoader.images.avatar_normal, 64, yCoord);
-};
-let switchCounter = 0;
-player.update = function(currentLevel) {
-    if((KEY_STATUS.w || KEY_STATUS.up) && currentLevel !== 2 && switchCounter === 0) {
-        currentLevel++;
-        switchCounter = 21;
-    } else if((KEY_STATUS.s || KEY_STATUS.down) && currentLevel !== 0 && switchCounter === 0) {
-        currentLevel--;
-        switchCounter = 21;
-    }
-    switchCounter = Math.max(switchCounter-1, 0);
-    return currentLevel;
-};
+/**
+ * Defines the player object and its methods
+ */
+let player = (function(player) {
+    player.dy     = 0;
+    player.width  = 64;
+    player.height = 64;
+    player.speed  = 6;
+    player.draw = function(yCoord) {
+        ctx.drawImage(assetLoader.images.avatar_normal, 64, yCoord);
+    };
+    player.reset = function() {
+        player.x = 64;
+        currentLevel = 1;
+    };
+    let switchCounter = 0;
+    player.update = function(currentLevel) {
+        if((KEY_STATUS.w || KEY_STATUS.up) && currentLevel !== 2 && switchCounter === 0) {
+            currentLevel++;
+            switchCounter = 21;
+        } else if((KEY_STATUS.s || KEY_STATUS.down) && currentLevel !== 0 && switchCounter === 0) {
+            currentLevel--;
+            switchCounter = 21;
+        }
+        
+        switchCounter = Math.max(switchCounter-1, 0);
+        
+        this.advance();
+        
+        // perhaps call the draw function here        
+        return currentLevel;
+    };
+    
+    return player;
+})(Object.create(Vector.prototype));
 
+/**
+ * This section handles user inpout and lets the player control the fugure using keyboard
+ */
 let KEY_CODES = {
     38: 'up',
     40: 'down',
@@ -64,14 +89,19 @@ document.onkeyup = function(e) {
         KEY_STATUS[KEY_CODES[keyCode]] = false;
     }
 };
-  
+
+/**
+ * This feature takes care of ensuring that all images will be loaded by the start of the game
+ */
 let assetLoader = (function() {
     this.images = {                                         // property holding all images
         "avatar_normal" : "images/gr.png",
         "avatar_alza"   : "images/alza.jpg",
         "bg"            : "images/bg.png",
         "lineElement"   : "images/lineElement.png",
-        "sky"           : "images/sky.png"
+        "sky"           : "images/sky.png",
+        
+        "obs1"          : "images/obstacles/obstacle1.jpg"
     };
     let assetsLoaded = 0;                                  // number of assets currently loaded
     this.totalAssets = Object.keys(this.images).length;    // total number of assets
@@ -123,6 +153,85 @@ assetLoader.finished = function() {
     console.log("finished");
     startGame();
 };
+
+/**
+ * A vector object holding the current coordinates of an object andits direction in a 2d space
+ * @param {integer} x - x coordinate
+ * @param {integer} y - y coordinate
+ * @param {integer} dx - change in x
+ * @param {integer} dy - change in y
+ */
+function Vector(x, y, dx, dy) {
+    this.x = x || 0;
+    this.y = y || 0;
+    this.dx = dx || 0;
+    this.dy = dy || 0;
+}
+
+/**
+ * Advance the vectors position by dx, dy
+ */
+Vector.prototype.advance = function() {
+    this.x += this.dx;
+    this.y += this.dy;
+};
+
+/**
+ * Get the minimum distance between two vectors
+ * @param vec - another vector
+ * @return minDist
+ */
+Vector.prototype.minDist = function(vec) {
+    let minDist = Number.POSITIVE_INFINITY;
+    let max     = Math.max(Math.abs(this.dx), Math.abs(this.dy), Math.abs(vec.dx), Math.abs(vec.dy));
+    let slice   = 1 / max;
+    let x, y, distSquared;
+    
+    // get the middle of each vector
+    let vec1 = {}, vec2 = {};
+    vec1.x = this.x + this.width/2;
+    vec1.y = this.y + this.height/2;
+    vec2.x = vec.x + vec.width/2;
+    vec2.y = vec.y + vec.height/2;
+    
+    for(let percent=0; percent<1; percent += slice) {
+        x = (vec1.x + this.dx * percent) - (vec2.x + vec.dx * percent);
+        y = (vec1.y + this.dy * percent) - (vec2.y + vec.dy * percent);
+        distSquared = x * x + y * y;
+        minDist = Math.min(minDist, distSquared);
+    }
+
+    return Math.sqrt(minDist);
+};
+
+/**
+ * This function specifies the behaviour of an obstacle object
+ * @param {integer} x - x coordinate
+ * @param {integer} y - y coordinate
+ * @param {string} name - name of the obstacle
+ */
+function Obstacle(x, y, name) {
+    this.x      = x;
+    this.y      = y;
+    this.width  = platformWidth;
+    this.height = platformWidth;
+    this.name = name;
+    
+    Vector.call(this, x, y, 0, 0);
+    
+    this.update = function() {
+        this.dx = player.speed;
+        this.advance();
+    };
+    this.draw = function() {
+        ctx.save();
+        ctx.translate(0.5,0.5);
+        ctx.drawImage(assetLoader.images[this.name], this.x, this.y);
+        ctx.restore();
+    };
+}
+Obstacle.prototype = Object.create(Vector.prototype);
+
 
 /**
  * Create a parallax background
