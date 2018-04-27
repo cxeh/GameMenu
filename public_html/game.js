@@ -1,20 +1,20 @@
-(function () {                                  // note to self: adjust width of the canvas -> UX, more evasion time
+//(function () {                                  // note to self: adjust width of the canvas -> UX, more evasion time
     // getting access to the canvas and its drawing context
-    let canvas = document.getElementById("canvas");
-    let ctx = canvas.getContext("2d");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
 
     // introducing global game variables
     let ground1 = [];
     let ground2 = [];
     let ground3 = [];
-    let currentLevel;;                          // player is starting at the middle line
-    let platformWidth = 32;                     // Note to self: rename to smth like platformDim
-    let stop, ticker;                           // not fully integrated yet, note to self: integrate
+    const platformWidth = 32;                     // Note to self: rename to smth like platformDim
+    let stop;                          // not fully integrated yet, note to self: integrate
 
     let obstacles = [];
+    const OBSTACLES_AVAILABLE = 4;
 
     // requesting animation frames
-    let requestAnimFrame = (function(){
+    const requestAnimFrame = (function(){
         return  window.requestAnimationFrame       ||
                 window.webkitRequestAnimationFrame ||
                 window.mozRequestAnimationFrame    ||
@@ -25,7 +25,12 @@
                 };
     })();
     
-    // helper function for obtaining a pseudorandom number such that low <= number <= high
+    /*
+     * @param {integer} low - the low bound
+     * @param {integer} high - the high bound
+     * @returns {integer} - the pseudorandom number such that low <= number <= high
+     * helper function for obtaining a pseudorandom number in a specific range
+     */
     function getRandomInRange(low, high) {
         return Math.floor(Math.random()*(high-low+1)+low);
     };
@@ -34,40 +39,42 @@
      * Defines the player object and its methods
      */
     let player = (function(player) {
-        player.dy     =  0;
+        player.x      = 64;
+        player.y      = 224;
+        player.dx     =  0;
+        player.dy     =  0;                 // note to self: obsolete feature, y doesnt/shouldnt change
         player.width  = 64;
         player.height = 64;
         player.speed  =  8;                 // note to self: this value may need a bit more tinkering, @addtoplaytesting
-        player.draw = function(yCoord) {
-            ctx.drawImage(assetLoader.images.avatar_normal, 64, yCoord);
+        player.draw = function() {
+            ctx.drawImage(assetLoader.images.avatar_normal, 64, this.y);
         };
         player.reset = function() {
-            player.x = 64;
-            currentLevel = 1;
+            player.x     = 64;
+            player.y     = 224; 
+            player.speed = 8;
         };
         let switchCounter = 0;
-        player.update = function(currentLevel) {
-            if((KEY_STATUS.w || KEY_STATUS.up) && currentLevel !== 2 && switchCounter === 0) {
-                currentLevel++;
+        player.update = function() { 
+            if((KEY_STATUS.w || KEY_STATUS.up) && this.y > 128 && switchCounter === 0) {
+                this.y -= canvas.height/3;
                 switchCounter = 16;         // note to self: this value may need a bit more tinkering, @addtoplaytesting
-            } else if((KEY_STATUS.s || KEY_STATUS.down) && currentLevel !== 0 && switchCounter === 0) {
-                currentLevel--;
+            } else if((KEY_STATUS.s || KEY_STATUS.down) && this.y < 320 && switchCounter === 0) {
+                this.y += canvas.height/3;
                 switchCounter = 16;
             }
 
             switchCounter = Math.max(switchCounter-1, 0);
 
-            this.advance();
-
-            // perhaps call the draw function here        
-            return currentLevel;
+            //this.advance();
+            
         };
 
         return player;
     })(Object.create(Vector.prototype));
 
     /**
-     * This section handles user inpout and lets the player control the fugure using keyboard
+     * This section handles user inpout and lets the player control the figure using keyboard
      */
     let KEY_CODES = {
         38: 'up',
@@ -104,10 +111,14 @@
             "avatar_normal" : "images/gr.png",
             "avatar_alza"   : "images/alza.jpg",
             "bg"            : "images/bg.png",
-            "lineElement"   : "images/lineElement.png",
+            "lineElement"   : "images/lineElement.jpg",
+            "lineElement2"  : "images/lineElement2.jpg",    
             "sky"           : "images/sky.png",
 
-            "obs1"          : "images/obstacles/obstacle1.jpg"
+            "obs1"          : "images/obstacles/obstacle1.jpg",
+            "obs2"          : "images/obstacles/obstacle2.jpg",
+            "obs3"          : "images/obstacles/obstacle3.jpg",
+            "obs4"          : "images/obstacles/obstacle4.jpg"
         };
         let assetsLoaded = 0;                                  // number of assets currently loaded
         this.totalAssets = Object.keys(this.images).length;    // total number of assets
@@ -141,12 +152,12 @@
                         _this.images[img] = new Image();
                         _this.images[img].status = "loading";
                         _this.images[img].name = img;
-                        _this.images[img].onload = function() { assetLoaded.call(_this, "images", img) };
+                        _this.images[img].onload = function() { assetLoaded.call(_this, "images", img); };
                         _this.images[img].src = src;
                     })(_this, img);
                 }
             }
-        }
+        };
 
         return {
             images: this.images,
@@ -156,7 +167,7 @@
     })();
 
     assetLoader.finished = function() {
-        console.log("finished");
+        //console.log("finished");
         startGame();
     };
 
@@ -168,8 +179,8 @@
      * @param {integer} dy - change in y
      */
     function Vector(x, y, dx, dy) {
-        this.x = x || 0;
-        this.y = y || 0;
+        this.x  =  x || 0;
+        this.y  =  y || 0;
         this.dx = dx || 0;
         this.dy = dy || 0;
     }
@@ -181,47 +192,42 @@
         this.x += this.dx;
         this.y += this.dy;
     };
-
-    /**
-     * Get the minimum distance between two vectors
-     * @param vec - another vector
-     * @return minDist
-     */
-    Vector.prototype.minDist = function(vec) {
-        let minDist = Number.POSITIVE_INFINITY;
-        let max     = Math.max(Math.abs(this.dx), Math.abs(this.dy), Math.abs(vec.dx), Math.abs(vec.dy));
-        let slice   = 1 / max;
-        let x, y, distSquared;
-
-        // get the middle of each vector
-        let vec1 = {}, vec2 = {};
-        vec1.x = this.x + this.width/2;
-        vec1.y = this.y + this.height/2;
-        vec2.x = vec.x + vec.width/2;
-        vec2.y = vec.y + vec.height/2;
-
-        for(let percent=0; percent<1; percent += slice) {
-            x = (vec1.x + this.dx * percent) - (vec2.x + vec.dx * percent);
-            y = (vec1.y + this.dy * percent) - (vec2.y + vec.dy * percent);
-            distSquared = x * x + y * y;
-            minDist = Math.min(minDist, distSquared);
+    
+    Vector.prototype.collisionOnX = function(anotherVec) {
+        let speed = (anotherVec.dx);
+        let slice = 1/speed;
+        let delta;
+        
+        for(let percent=0; percent<=speed; percent += slice) {
+            delta = anotherVec.x+percent;
+            if(delta <= this.x+player.width && delta >= this.x) return true;
+            //if(delta < player.x+player.width && delta > 0) console.log(delta);
         }
-
-        return Math.sqrt(minDist);
+        return false;
+    };
+    
+    Vector.prototype.collisionOnY = function(anotherVec) { 
+        //if(anotherVec.x < player.x+2*player.width)
+            return (this.y >= anotherVec.y && this.y <= anotherVec.y+anotherVec.height);
+        //else return false;
+    };
+    
+    Vector.prototype.boomX = function(anotherVec) {
+        let pos = anotherVec.x+anotherVec.dx;
+        return (pos <= this.x+this.width && pos >= this.x);
     };
 
     /**
      * This function specifies the behaviour of an obstacle object
      * @param {integer} x - x coordinate
      * @param {integer} y - y coordinate
-     * @param {string} name - name of the obstacle
      */
-    function Obstacle(x, y, name) {
+    function Obstacle(x, y) {
         this.x      = x;
         this.y      = y;
-        this.width  = platformWidth;
-        this.height = platformWidth;
-        this.name = name;
+        this.width  = 209;
+        this.height = 128;
+        this.name   = "obs"+ getRandomInRange(1, OBSTACLES_AVAILABLE);
 
         Vector.call(this, x, y, 0, 0);
 
@@ -229,9 +235,8 @@
             this.dx = -player.speed;
             this.advance();
         };
+        
         this.draw = function() {
-            ctx.save();
-            ctx.translate(0.5,0.5);
             let image = assetLoader.images[this.name];
             // ctx.drawImage(image, this.x, this.y, image.clientWidth/((canvas.height*(1/3))-this.height), (canvas.height*(1/3))-this.height); pretty sure this is the general expression, doesnt seem to work though
             ctx.drawImage(image, this.x, this.y, 209, 128);
@@ -239,25 +244,39 @@
         };
     }
     Obstacle.prototype = Object.create(Vector.prototype);
+    
+    function collisionDetection() {
+        for(let obstacle of obstacles) {
+            //if(player.collisionOnX(obstacle)) console.log("collision on x");
+            if(player.boomX(obstacle) && player.collisionOnY(obstacle)) {       //  && player.minimalYDistance(obstacle) <= player.height
+                gameOver();
+            }
+        }
+    }
 
     // This function updates the position of all obstacles currently present on the canvas, removes those which are behind the figure and adds new one in their place to the right of the canvas
     function updateObstacles() {
         for(let i=0; i<obstacles.length; i++) {
             obstacles[i].update();
             obstacles[i].draw();
-
-            // gameOver() and collision detection type features are unimplemented yet
-            if(player.minDist(obstacles[i]) <= player.width - platformWidth/2) {
-                gameOver();
-            }
         }
 
         // if an obstacle moved too far left remove it and put a new one before the player figure
         if(obstacles[0] && obstacles[0].x < -8*platformWidth) {
             obstacles.splice(0,1);
-            obstacles.push(new Obstacle(canvas.width, (canvas.height*(getRandomInRange(0, 2)/3)), "obs1"));
+            obstacles.push(new Obstacle(canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));
         }
     }
+    
+    function resetObstacles() {
+        obstacles = [];
+    };
+    
+    function resetGround() {
+        ground1 = [];
+        ground2 = [];
+        ground3 = [];
+    };
     
     function updateLines() {
         // drawing and updating three lines, note to self: move  to another function
@@ -317,8 +336,11 @@
     function startGame() {
         document.getElementById('game-over').style.display = 'none';
         stop = false;
-        ticker = 0;
-        currentLevel = 1;
+        
+        resetGround();
+        resetObstacles();
+        player.reset();
+        background.reset();
         
         for(let i=0, length = Math.floor(canvas.width / platformWidth)+2; i<length; i++) {  // prepares the three lines and creates two right to the canvas edge to prevent another from 'bliping into
             ground1[i] = {"x": i * platformWidth, "y": canvas.height-platformWidth};        // existence inside the canvas creating a disturbing visual effect as they appear
@@ -326,13 +348,13 @@
             ground3[i] = {"x": i * platformWidth, "y": canvas.height*(1/3)-platformWidth};
         }
         
+        // note to self: in case of increasing the canvas width even further, shrink the obstacles period to smth like canvas.width*0.75, use a loop, a wait statement (setTimeout()) and a second loop
         for(let i=0; i<2; i++) {    // prepares two obstacles in advance and also sets it up in a way that there always will be two obstacles on the screen
-            obstacles.push(new Obstacle(i*(canvas.width)+2*canvas.width, (canvas.height*(getRandomInRange(0, 2)/3)), "obs1"));  // +2*canvas.width creates a beginning without any obstacles
-        }
+            obstacles.push(new Obstacle(i*(canvas.width)+2*canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));  // +2*canvas.width creates a beginning without any obstacles
+        }        
         
-        background.reset();
         animate();
-    }
+    };
 
     /**
      * Main loop, takes care of updating the game at each frame
@@ -344,18 +366,19 @@
             updateObstacles();
             updateLines();
             
-            currentLevel = player.update(currentLevel);                                // try with currentLevel being player property
-            player.draw(canvas.height*((3-currentLevel)/3)-platformWidth*3);
+            collisionDetection();
+            
+            player.update();
+            player.draw();
         }
-        ticker++;
-    }
+    };
     
     function gameOver() {
         stop = true;
         document.getElementById('game-over').style.display = 'block';
-    }
+    };
     
     document.getElementById('restart').addEventListener('click', startGame);
     
     assetLoader.downloadAll();
-})();
+//})();
