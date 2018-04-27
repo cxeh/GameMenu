@@ -1,4 +1,4 @@
-//(function () {                                  // note to self: adjust width of the canvas -> UX, more evasion time
+(function () {                                  // note to self: adjust width of the canvas -> UX, more evasion time
     // getting access to the canvas and its drawing context
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
@@ -9,6 +9,7 @@
     let ground3 = [];
     const platformWidth = 32;                     // Note to self: rename to smth like platformDim
     let stop;                          // not fully integrated yet, note to self: integrate
+    let score;
 
     let obstacles = [];
     const OBSTACLES_AVAILABLE = 4;
@@ -65,9 +66,6 @@
             }
 
             switchCounter = Math.max(switchCounter-1, 0);
-
-            //this.advance();
-            
         };
 
         return player;
@@ -167,7 +165,6 @@
     })();
 
     assetLoader.finished = function() {
-        //console.log("finished");
         startGame();
     };
 
@@ -224,6 +221,7 @@
      */
     function Obstacle(x, y) {
         this.x      = x;
+        this.dx     = -player.speed;
         this.y      = y;
         this.width  = 209;
         this.height = 128;
@@ -240,9 +238,8 @@
             let image = assetLoader.images[this.name];
             // ctx.drawImage(image, this.x, this.y, image.clientWidth/((canvas.height*(1/3))-this.height), (canvas.height*(1/3))-this.height); pretty sure this is the general expression, doesnt seem to work though
             ctx.drawImage(image, this.x, this.y, 209, 128);
-            ctx.restore();
         };
-    }
+    };
     Obstacle.prototype = Object.create(Vector.prototype);
     
     function collisionDetection() {
@@ -252,7 +249,7 @@
                 gameOver();
             }
         }
-    }
+    };
 
     // This function updates the position of all obstacles currently present on the canvas, removes those which are behind the figure and adds new one in their place to the right of the canvas
     function updateObstacles() {
@@ -265,8 +262,9 @@
         if(obstacles[0] && obstacles[0].x < -8*platformWidth) {
             obstacles.splice(0,1);
             obstacles.push(new Obstacle(canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));
+            score++;
         }
-    }
+    };
     
     function resetObstacles() {
         obstacles = [];
@@ -301,7 +299,7 @@
             ground3.shift();
             ground3.push({"x": ground3[ground3.length-1].x + platformWidth, "y": canvas.height*(1/3)-platformWidth});
         }
-    }
+    };
 
     /**
      * Create a parallax background
@@ -336,6 +334,7 @@
     function startGame() {
         document.getElementById('game-over').style.display = 'none';
         stop = false;
+        score = 0;
         
         resetGround();
         resetObstacles();
@@ -376,9 +375,12 @@
     function gameOver() {
         stop = true;
         document.getElementById('game-over').style.display = 'block';
+        console.log("Your score = "+score);
+        //$('#score').html(score);
+        document.getElementById("score").innerHTML = (+score+"!");
     };
     
     document.getElementById('restart').addEventListener('click', startGame);
     
     assetLoader.downloadAll();
-//})();
+})();
