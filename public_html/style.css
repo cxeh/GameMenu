@@ -28,7 +28,7 @@ canvas, #game-over {
   -moz-box-sizing: border-box;
   box-sizing: border-box;
   width: 800px; 
-  weight:480px;
+  height:480px;
 }
 
 #game-over {
