@@ -18,47 +18,41 @@ body {
   left: 5px;
 }
 
-canvas {
+canvas, #game-over {
   position: absolute;
   top: 0;
   left: 0;
   border: 1px solid black;
-  z-index: 1;
+  z-index: 100;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;
+  width: 800px; 
+  height: 480px;
 }
-
-h2 {
-    position: absolute;
-    margin-left: 270px;
-    margin-top: 128px;
-    font-family: "Courier New", Courier, monospace;
-    color: yellowgreen;
-}
-
-/*
-a {
-    position: absolute;
-    margin-left: 270px;
-    margin-top: 128px;
-    font-family: "Courier New", Courier, monospace;
-    color: yellowgreen;
-    z-index: 11;
-}
-*/
 
 #game-over {
-  display: none;
-  /*text-align: center;*/
-  padding-top: 160px;
-  z-index: 10;
-  width: 640px;
-  height: 480px;
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
-  box-sizing: border-box;
-  overflow: auto;
-  margin: auto;
-  position: absolute;
+    display: none;
+    z-index: 104;
+    width:100%;
+    height: 100%;
+}
+
+#game-over > * {
+    position: relative;
+    top: 35%;
+    left: 0;
+    text-align: center;
+}
+
+#game-over h2 {
+    color: yellowgreen;
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bolder;
+}
+
+#game-over a {
+    border-color: azure;
+    font-family: "Courier New", Courier, monospace;
+    color: #009900;
 }
