@@ -56,3 +56,20 @@ canvas, #game-over {
     font-family: "Courier New", Courier, monospace;
     color: #009900;
 }
+
+#currentScore {
+    position: relative;
+    display: block; 
+    z-index: 103;
+    /*width: 20%;
+    height: 20%;*/
+    margin-left: 2%;
+    font-family: "Courier New", Courier, monospace;
+    color: green;
+}
+
+#currentScore h2 {
+    color: yellowgreen;
+    font-family: inherited;
+    font-weight: bolder;
+}
