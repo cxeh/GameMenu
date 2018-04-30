@@ -104,7 +104,7 @@
             KEY_STATUS[KEY_CODES[keyCode]] = false; // if the key has been released, reset the value to false
         }
     };
-
+    
     /**
      * This feature takes care of ensuring that all images will be loaded by the start of the game
      */
@@ -283,33 +283,16 @@
     
     function updateLines() {
         // drawing and updating three lines, note to self: move  to another function
-        for(let i=0; i<ground1.length; i++) {
-            ground1[i].x -= player.dx; // maybe integrate with vectors and use vector.advance() ?
-            ground2[i].x -= player.dx;
-            ground3[i].x -= player.dx;
-            ctx.drawImage(assetLoader.images.lineElement, ground1[i].x, ground1[i].y);
-            ctx.drawImage(assetLoader.images.lineElement, ground2[i].x, ground2[i].y);
-            ctx.drawImage(assetLoader.images.lineElement, ground3[i].x, ground3[i].y);
-        }
-
-        if(ground1[0].x <= -platDimension) {
-            ground1.shift();
-            ground1.push({"x": ground1[ground1.length-1].x + platDimension, "y": canvas.height-platDimension});
-        }
-        else if(ground2[0].x <= -platDimension) {
-            ground2.shift();
-            ground2.push({"x": ground2[ground2.length-1].x + platDimension, "y": canvas.height*(2/3)-platDimension});
-        }
-        else if(ground3[0].x <= -platDimension) {
-            ground3.shift();
-            ground3.push({"x": ground3[ground3.length-1].x + platDimension, "y": canvas.height*(1/3)-platDimension});
+        grounds = [ground1, ground2, ground3]
+        for(let ground of grounds) {
+            for(let i=0; i<ground.length; i++) {
+                let maxWidth = canvas.width + platDimension; // adding one to fill the gap
+                ground[i].x = (ground[i].x - player.dx + maxWidth) % maxWidth - platDimension; // result is always shifted 
+                ctx.drawImage(assetLoader.images.lineElement, ground[i].x, ground[i].y);
+            }
         }
     };
     
-    function updateScore() {
-        document.getElementById('varScore').innerHTML = score;
-    };
-
     /**
      * Create a parallax background
      */
@@ -332,8 +315,35 @@
             sky.speed = 0.2;
         };
         return {
-            draw: this.draw,
+            draw:  this.draw,
             reset: this.reset
+        };
+    })();
+    
+    /**
+     * This class contains all communication with HTML elements
+     */
+    let manipulateHTML = (function() {
+        this.manipulateAtStart = function() {
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('currentScore').style.display = '';
+        };
+        this.manipulateScore = function() {
+            document.getElementById('varScore').innerHTML = score;
+        };
+        this.manipulateAtEnd = function() {
+            document.getElementById('currentScore').style.display = 'none';
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('score').innerHTML = (+score+"!");
+        };
+        this.manipulateAtRestart = function() {
+            document.getElementById('restart').addEventListener('click', startGame);
+        };
+        return {
+            manipulateAtStart:   this.manipulateAtStart,
+            manipulateScore:     this.manipulateScore,
+            manipulateAtEnd:     this.manipulateAtEnd,
+            manipulateAtRestart: this.manipulateAtRestart
         };
     })();
 
@@ -341,7 +351,7 @@
      * Start the game - reset all variables and entities, spawn platforms and water.
      */
     function startGame() {
-        document.getElementById('game-over').style.display = 'none';
+        manipulateHTML.manipulateAtStart();
         stop = false;
         score = 0;
         accelerateThreshold = 10;
@@ -351,7 +361,7 @@
         player.reset();
         background.reset();
         
-        for(let i=0, length = Math.floor(canvas.width / platDimension)+6; i<length; i++) {  // prepares the three lines and creates two right to the canvas edge to prevent another from 'bliping into
+        for(let i=0; i<Math.floor(canvas.width / platDimension)+1; i++) {  // prepares the three lines and creates two right to the canvas edge to prevent another from 'bliping into
             ground1[i] = {"x": i * platDimension, "y": canvas.height-platDimension};        // existence inside the canvas creating a disturbing visual effect as they appear
             ground2[i] = {"x": i * platDimension, "y": canvas.height*(2/3)-platDimension};
             ground3[i] = {"x": i * platDimension, "y": canvas.height*(1/3)-platDimension};
@@ -374,7 +384,7 @@
             background.draw();
             updateObstacles();
             updateLines();
-            updateScore();
+            manipulateHTML.manipulateScore();
             
             collisionDetection();
             
@@ -386,12 +396,10 @@
     
     function gameOver() {
         stop = true;
-        document.getElementById('currentScore').style.display = 'none';
-        document.getElementById('game-over').style.display = 'block';
-        document.getElementById("score").innerHTML = (+score+"!");
+        manipulateHTML.manipulateAtEnd();
     };
     
-    document.getElementById('restart').addEventListener('click', startGame);
+    manipulateHTML.manipulateAtRestart();
     
     assetLoader.downloadAll();
 })();
