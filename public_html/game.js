@@ -126,10 +126,12 @@
             startTime = new Date().getTime();       // record time when finger first makes contact with surface
             isMouseDown = true;
             e.preventDefault();
+            e.stopPropagation();
         }, false);
 
         canvas.addEventListener('mousemove', function(e){
             e.preventDefault();                     // prevent scrolling
+            e.stopPropagation();
         }, false);
 
         canvas.addEventListener('mouseup', function(e){
@@ -144,6 +146,7 @@
                 isMouseDown = false;                
                 handleswipe(swipedir);
                 e.preventDefault();
+                e.stopPropagation();
             };
         }, false);
 
@@ -177,10 +180,12 @@
             startTime = new Date().getTime(); // record time when finger first makes contact with surface
             isMouseDown = true;
             e.preventDefault();
+            e.stopPropagation();
         }, false);
 
         canvas.addEventListener('touchmove', function(e){
             e.preventDefault(); // prevent scrolling when inside DIV;
+            e.stopPropagation();
         }, false);
 
         canvas.addEventListener('touchend', function(e){
@@ -195,6 +200,7 @@
                 isMouseDown = false;
                 handleswipe(swipedir);
                 e.preventDefault();
+                e.stopPropagation();
             }
         }, false);
 
