@@ -45,7 +45,7 @@
         player.y      = 224;                 // y coordinate of the player object, either 64, 224 or 384 at all times
         player.dx     =   8;                 // "speed" along the x coordinate of the player object (player doesnt move)
         player.width  =  64;                 // width  of the player object
-        player.height =  64;                 // height of the playre object
+        player.height =  64;                 // height of the player object
         player.draw = function() {           // draw function of player, since there are no animation it just draws an image
             ctx.drawImage(assetLoader.images.avatar_normal, 64, this.y);
         };
@@ -55,20 +55,20 @@
             player.dx    =   8;
         };
         player.accelerate = function() {            
-            player.dx += 2; // accelerate
-            accelerateThreshold += 15;  // raise the threshold for another speed increase
-            console.log("accelerated. Now speeding along at: "+player.dx);  // upper line cant keep up
+            player.dx += 2;                  // accelerate
+            accelerateThreshold += 15;       // raise the threshold for another speed increase
         };
         let switchCounter = 0;               // initializes switchCounter which is used to set delay before line can be changed again
         player.update = function() {         // updates the player positioin based on keyboard input
-            if((KEY_STATUS.w || KEY_STATUS.up) && this.y > 128 && switchCounter === 0) {
+            if((KEY_STATUS.w || KEY_STATUS.up || SWIPES === "up") && this.y > 128 && switchCounter === 0) {                
                 this.y -= canvas.height/3;   // actually moves the player by changing the y coordinate
                 switchCounter = 16;          // the higher the number, the longer the delay before being able to change the line again
-            } else if((KEY_STATUS.s || KEY_STATUS.down) && this.y < 320 && switchCounter === 0) {
+                SWIPES = "none";
+            } else if((KEY_STATUS.s || KEY_STATUS.down || SWIPES === "down") && this.y < 320 && switchCounter === 0) {
                 this.y += canvas.height/3;   // same thing, just moves the player downwards
                 switchCounter = 16;
+                SWIPES = "none";
             }
-
             switchCounter = Math.max(switchCounter-1, 0);   // decreases the switchCounter delay
         };
 
@@ -105,6 +105,108 @@
         }
     };
     
+    let SWIPES = "none";
+    function mouseswipedetect() {  
+        let swipedir;
+        let startY;
+        let distY;
+        let threshold = 50;                        //required min distance traveled to be considered swipe
+        let allowedTime = 300;                      // maximum time allowed to travel that distance
+        let elapsedTime;
+        let startTime;
+        let isMouseDown = false;
+
+        function handleswipe(sdir) {            
+            SWIPES = sdir;
+        }
+
+        canvas.addEventListener('mousedown', function(e){
+            swipedir = 'none';
+            startY = e.pageY;
+            startTime = new Date().getTime();       // record time when finger first makes contact with surface
+            isMouseDown = true;
+            e.preventDefault();
+        }, false);
+
+        canvas.addEventListener('mousemove', function(e){
+            e.preventDefault();                     // prevent scrolling
+        }, false);
+
+        canvas.addEventListener('mouseup', function(e){
+            if(isMouseDown) {
+                distY = e.pageY - startY;           // get vertical dist traveled by finger while in contact with surface
+                elapsedTime = new Date().getTime() - startTime;  // get time elapsed
+                if(elapsedTime <= allowedTime) {    // first condition for awipe met
+                    if(Math.abs(distY) >= threshold){            // 2nd condition for vertical swipe met
+                        swipedir = (distY < 0) ? 'up' : 'down';  // if dist traveled is negative, it indicates up swipe
+                    }
+                }
+                isMouseDown = false;                
+                handleswipe(swipedir);
+                e.preventDefault();
+            };
+        }, false);
+
+        return {
+//            originX: this.startX,
+//            originY: this.startY,
+//            destinationX: this.distX,
+//            destinationY: this.distY,
+            //dir: this.swipedir
+        };
+    };
+    
+    function swipedetect() {
+  
+        let swipedir;
+        let startY;
+        let distY;
+        let threshold = 50;                            //required min distance traveled to be considered swipe
+        let allowedTime = 300;                          // maximum time allowed to travel that distance
+        let elapsedTime;
+        let startTime;
+        let isMouseDown = false;
+
+        function handleswipe(sdir) {
+            SWIPES = sdir;
+        }
+
+        canvas.addEventListener('touchstart', function(e){
+            swipedir = 'none';
+            startY = e.changedTouches[0].pageY;
+            startTime = new Date().getTime(); // record time when finger first makes contact with surface
+            isMouseDown = true;
+            e.preventDefault();
+        }, false);
+
+        canvas.addEventListener('touchmove', function(e){
+            e.preventDefault(); // prevent scrolling when inside DIV;
+        }, false);
+
+        canvas.addEventListener('touchend', function(e){
+            if(isMouseDown) {
+                distY = e.changedTouches[0].pageY - startY; // get vertical dist traveled by finger while in contact with surface
+                elapsedTime = new Date().getTime() - startTime // get time elapsed
+                if(elapsedTime <= allowedTime) { // first condition for awipe met
+                    if (Math.abs(distY) >= threshold){ // 2nd condition for vertical swipe met
+                        swipedir = (distY < 0)? 'up' : 'down'; // if dist traveled is negative, it indicates up swipe
+                    }
+                };
+                isMouseDown = false;
+                handleswipe(swipedir);
+                e.preventDefault();
+            }
+        }, false);
+
+        return {
+//            originX: this.startX,
+//            originY: this.startY,
+//            destinationX: this.distX,
+//            destinationY: this.distY,
+//            dir: this.swipedir
+        };
+    };
+
     /**
      * This feature takes care of ensuring that all images will be loaded by the start of the game
      */
@@ -264,7 +366,7 @@
         }
 
         // if an obstacle moved too far left remove it and put a new one before the player figure
-        if(obstacles[0] && obstacles[0].x < -8*platDimension) {     // weird condition replace with < -obstacles[0].width
+        if(obstacles[0] && obstacles[0].x < -obstacles[0].width) {     // subtracting in the condition results in increasing the gap between two succeeding obstacles (-0 means they are right after each other)
             obstacles.splice(0,1);
             obstacles.push(new Obstacle(canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));
             score++;
@@ -281,9 +383,13 @@
         ground3 = [];
     };
     
+    function resetSwipeInput() {
+        SWIPES = "none";
+    };
+    
     function updateLines() {
         // drawing and updating three lines, note to self: move  to another function
-        grounds = [ground1, ground2, ground3]
+        let grounds = [ground1, ground2, ground3];
         for(let ground of grounds) {
             for(let i=0; i<ground.length; i++) {
                 let maxWidth = canvas.width + platDimension; // adding one to fill the gap
@@ -321,7 +427,7 @@
     })();
     
     /**
-     * This class contains all communication with HTML elements
+     * This class contains all manipulations of HTML elements performed in this script
      */
     let manipulateHTML = (function() {
         this.manipulateAtStart = function() {
@@ -358,6 +464,7 @@
         
         resetGround();
         resetObstacles();
+        //resetSwipeInput();
         player.reset();
         background.reset();
         
@@ -386,6 +493,7 @@
             updateLines();
             manipulateHTML.manipulateScore();
             
+            mouseswipedetect();
             collisionDetection();
             
             if(score > accelerateThreshold) player.accelerate();
@@ -396,6 +504,7 @@
     
     function gameOver() {
         stop = true;
+        //processTouchEvents();
         manipulateHTML.manipulateAtEnd();
     };
     
