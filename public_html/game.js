@@ -180,13 +180,13 @@
             startTime = new Date().getTime(); // record time when finger first makes contact with surface
             isMouseDown = true;
             e.preventDefault();
-            e.stopPropagation();
-        }, false);
+            //e.stopPropagation();
+        });
 
         window.addEventListener('touchmove', function(e){
             e.preventDefault(); // prevent scrolling when inside DIV;
-            e.stopPropagation();
-        }, false);
+            //e.stopPropagation();
+        });
 
         window.addEventListener('touchend', function(e){
             if(isMouseDown) {
@@ -200,9 +200,9 @@
                 isMouseDown = false;
                 handleswipe(swipedir);
                 e.preventDefault();
-                e.stopPropagation();
+                //e.stopPropagation();
             }
-        }, false);
+        });
 
         return {
 //            originX: this.startX,
