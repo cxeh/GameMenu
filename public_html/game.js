@@ -174,7 +174,7 @@
             SWIPES = sdir;
         }
 
-        window.addEventListener('touchstart', function(e){
+        canvas.addEventListener('touchstart', function(e){
             swipedir = 'none';
             startY = e.changedTouches[0].pageY;
             startTime = new Date().getTime(); // record time when finger first makes contact with surface
@@ -183,12 +183,12 @@
             //e.stopPropagation();
         });
 
-        window.addEventListener('touchmove', function(e){
+        canvas.addEventListener('touchmove', function(e){
             e.preventDefault(); // prevent scrolling when inside DIV;
             //e.stopPropagation();
         });
 
-        window.addEventListener('touchend', function(e){
+        canvas.addEventListener('touchend', function(e){
             if(isMouseDown) {
                 distY = e.changedTouches[0].pageY - startY; // get vertical dist traveled by finger while in contact with surface
                 elapsedTime = new Date().getTime() - startTime // get time elapsed
@@ -500,6 +500,7 @@
             manipulateHTML.manipulateScore();
             
             mouseswipedetect();
+            swipedetect();
             collisionDetection();
             
             if(score > accelerateThreshold) player.accelerate();
