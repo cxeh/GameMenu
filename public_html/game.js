@@ -1,3 +1,9 @@
+/**
+ * This script contains function necessary to run this game.
+ * 
+ * @author M. Horacek
+ * @version 04/05 2018
+ */
 (function () {      // establishing a separate namespace, prohibiting access from the console
     // getting access to the canvas and its drawing context
     const canvas = document.getElementById("canvas");
