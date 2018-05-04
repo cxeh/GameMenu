@@ -1,19 +1,12 @@
 (function () {      // establishing a separate namespace, prohibiting access from the console
     // getting access to the canvas and its drawing context
     const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d", { alpha : false });
+    const ctx = canvas.getContext("2d");
 
     // introducing global game variables
-    let ground1 = [];                   // array containing images forming the lowest line
-    let ground2 = [];                   // array containing images forming the middle line
-    let ground3 = [];                   // array containing images forming the uppermost line
-    const platDimension = 32;           // constant holding dimensions of a square line element image in pixels 
     let stop;                           // false on default, turns true when the player hits an obstacle, stops animations
     let score;                          // variable keeping track of score
-    let accelerateThreshold;       // variable setting the first point where the game begins to speed up
-
-    let obstacles = [];                 // array incorporating all obstacles present at a given point in time
-    const OBSTACLES_AVAILABLE = 4;      // constant holding the number of images serving as obstacles
+    let accelerateThreshold;            // variable setting the first point where the game begins to speed up
 
     // requesting animation frames
     const requestAnimFrame = (function(){
@@ -60,79 +53,85 @@
         };
         let switchCounter = 0;               // initializes switchCounter which is used to set delay before line can be changed again
         player.update = function() {         // updates the player positioin based on keyboard input
-            if((KEY_STATUS.w || KEY_STATUS.up || SWIPES === "up") && this.y > 128 && switchCounter === 0) {                
+            if((/*KEY_STATUS.w || KEY_STATUS.up || */currentMoveDirection === "up") && this.y > 128 && switchCounter === 0) { // second condition prohibits the player from going up in the uppermost lane             
                 this.y -= canvas.height/3;   // actually moves the player by changing the y coordinate
                 switchCounter = 16;          // the higher the number, the longer the delay before being able to change the line again
-                SWIPES = "none";
-            } else if((KEY_STATUS.s || KEY_STATUS.down || SWIPES === "down") && this.y < 320 && switchCounter === 0) {
+                currentMoveDirection = "none";
+            } else if((/*KEY_STATUS.s || KEY_STATUS.down || */currentMoveDirection === "down") && this.y < 320 && switchCounter === 0) {
                 this.y += canvas.height/3;   // same thing, just moves the player downwards
                 switchCounter = 16;
-                SWIPES = "none";
+                currentMoveDirection = "none";
             }
             switchCounter = Math.max(switchCounter-1, 0);   // decreases the switchCounter delay
         };
 
         return player;
-    })(Object.create(Vector.prototype));     // imports the functions of Vector.prototype to be used by player object
+    })(Object.create(Vector.prototype));
 
+    let currentMoveDirection = "none";
+    
     /**
      * This section handles user inpout and lets the player control the figure using keyboard
-     */
-    let KEY_CODES = {                        // includes the codes of keys used to control the players figure
-        38: 'up',
-        40: 'down',
-        83: 's',
-        87: 'w'    
-    };
-    let KEY_STATUS = {};                     // true or false based on if the respective key has been pressed
-    for(let code in KEY_CODES) {
-        if(KEY_CODES.hasOwnProperty(code)) {
-            KEY_STATUS[KEY_CODES[code]] = false;    // set the default value to false
-        }
-    }
-    document.onkeydown = function(e) {       // handles the event when a key has been pressed
-        let keyCode = (e.keyCode) ? e.keyCode : e.charCode;
-        if(KEY_CODES[keyCode]) {
+     */    
+    let keyboardInput = function() {
+        function setDirection(direction) {
+            currentMoveDirection = direction;
+        };
+        
+        document.onkeydown = function(e) {
+            let keyPressed = e.key;
+            switch(keyPressed) {
+                case "ArrowUp":
+                    setDirection('up');
+                    break;
+                case "w":
+                    setDirection('up');
+                    break;
+                case "ArrowDown":
+                    setDirection('down');
+                    break;
+                case "s":
+                    setDirection('down');
+                    break;
+                default:
+                    setDirection('none');
+            }
             e.preventDefault();
-            KEY_STATUS[KEY_CODES[keyCode]] = true;  // if the key has been pressed, set the value to true;
-        }
-    };
-    document.onkeyup = function(e) {         // handles the event when a previously pressed key has been released
-        let keyCode = (e.keyCode) ? e.keyCode : e.charCode;
-        if(KEY_CODES[keyCode]) {
+        };
+        
+        document.onkeyup = function(e) {
+            setDirection('none');
             e.preventDefault();
-            KEY_STATUS[KEY_CODES[keyCode]] = false; // if the key has been released, reset the value to false
-        }
+        };
     };
     
-    let SWIPES = "none";
-    function mouseswipedetect() {  
-        let swipedir;
-        let startY;
-        let distY;
-        let threshold = 50;                        //required min distance traveled to be considered swipe
+    function mouseSwipeInput() {  
+        let swipeDirection;                         // will be used to store the direction of ongoing swipe
+        let startY;                                 // starting y coordinate of the swipe
+        let distY;                                  // starting x coordinate of the swipe
+        let threshold = 50;                         // required min distance traveled to be considered swipe
         let allowedTime = 300;                      // maximum time allowed to travel that distance
-        let elapsedTime;
-        let startTime;
+        let elapsedTime;                            // this variable measures how much time has between a mousedown and a mouseup event
+        let startTime;                              // this variable stores the time passed since mousedown event
         let isMouseDown = false;
 
-        function handleswipe(sdir) {            
-            SWIPES = sdir;
-        }
+        function setMoveDirection(swipeDirection) {            
+            currentMoveDirection = swipeDirection;
+        };
 
         canvas.addEventListener('mousedown', function(e){
-            swipedir = 'none';
+            swipeDirection = 'none';
             startY = e.pageY;
             startTime = new Date().getTime();       // record time when finger first makes contact with surface
             isMouseDown = true;
             e.preventDefault();
             e.stopPropagation();
-        }, false);
+        });
 
         canvas.addEventListener('mousemove', function(e){
             e.preventDefault();                     // prevent scrolling
             e.stopPropagation();
-        }, false);
+        });
 
         canvas.addEventListener('mouseup', function(e){
             if(isMouseDown) {
@@ -140,77 +139,57 @@
                 elapsedTime = new Date().getTime() - startTime;  // get time elapsed
                 if(elapsedTime <= allowedTime) {    // first condition for awipe met
                     if(Math.abs(distY) >= threshold){            // 2nd condition for vertical swipe met
-                        swipedir = (distY < 0) ? 'up' : 'down';  // if dist traveled is negative, it indicates up swipe
+                        swipeDirection = (distY < 0) ? 'up' : 'down';  // if dist traveled is negative, it indicates up swipe
                     }
                 }
                 isMouseDown = false;                
-                handleswipe(swipedir);
+                setMoveDirection(swipeDirection);
                 e.preventDefault();
                 e.stopPropagation();
             };
-        }, false);
-
-        return {
-//            originX: this.startX,
-//            originY: this.startY,
-//            destinationX: this.distX,
-//            destinationY: this.distY,
-            //dir: this.swipedir
-        };
+        });
     };
     
-    function swipedetect() {
-  
-        let swipedir;
+    function touchSwipeInput() {  
+        let swipeDirection;
         let startY;
         let distY;
-        let threshold = 50;                            //required min distance traveled to be considered swipe
+        let threshold = 50;                             //required min distance traveled to be considered swipe
         let allowedTime = 300;                          // maximum time allowed to travel that distance
         let elapsedTime;
         let startTime;
         let isMouseDown = false;
 
-        function handleswipe(sdir) {
-            SWIPES = sdir;
-        }
+        function setMoveDirection(swipeDirection) {
+            currentMoveDirection = swipeDirection;
+        };
 
         canvas.addEventListener('touchstart', function(e){
-            swipedir = 'none';
+            swipeDirection = 'none';
             startY = e.changedTouches[0].pageY;
             startTime = new Date().getTime(); // record time when finger first makes contact with surface
             isMouseDown = true;
             e.preventDefault();
-            //e.stopPropagation();
         });
 
         canvas.addEventListener('touchmove', function(e){
             e.preventDefault(); // prevent scrolling when inside DIV;
-            //e.stopPropagation();
         });
 
         canvas.addEventListener('touchend', function(e){
             if(isMouseDown) {
                 distY = e.changedTouches[0].pageY - startY; // get vertical dist traveled by finger while in contact with surface
-                elapsedTime = new Date().getTime() - startTime // get time elapsed
+                elapsedTime = new Date().getTime() - startTime; // get time elapsed
                 if(elapsedTime <= allowedTime) { // first condition for awipe met
                     if (Math.abs(distY) >= threshold){ // 2nd condition for vertical swipe met
-                        swipedir = (distY < 0)? 'up' : 'down'; // if dist traveled is negative, it indicates up swipe
+                        swipeDirection = (distY < 0)? 'up' : 'down'; // if dist traveled is negative, it indicates up swipe
                     }
                 };
                 isMouseDown = false;
-                handleswipe(swipedir);
+                setMoveDirection(swipeDirection);
                 e.preventDefault();
-                //e.stopPropagation();
             }
         });
-
-        return {
-//            originX: this.startX,
-//            originY: this.startY,
-//            destinationX: this.distX,
-//            destinationY: this.distY,
-//            dir: this.swipedir
-        };
     };
 
     /**
@@ -219,10 +198,8 @@
     let assetLoader = (function() {
         this.images = {                                         // property holding all images
             "avatar_normal" : "images/gr.png",                  // an alias and the path to the image
-            "avatar_alza"   : "images/alza.jpg",
             "bg"            : "images/bg.png",
             "lineElement"   : "images/lineElement.jpg",
-            "lineElement2"  : "images/lineElement2.jpg",    
             "sky"           : "images/sky.png",
 
             "obs1"          : "images/obstacles/obstacle1.jpg",
@@ -306,8 +283,9 @@
      * basically divides the dx (aka the speed or change in x coordinate per frame) into multiple parts
      * and then checks whether at any point a collision happens
      * has only sense in situations where the speed is bigger than a dimension of a obstacle
+     * @param {vector} anotherVec - another object possessing a "speed" and a position on canvas
      */ 
-    Vector.prototype.iterativeCollisionOnX = function(anotherVec) {
+    Vector.prototype.iterativeCollisionOnX = function(anotherVec) {                     // Also this feature hasnt been tested for some time so it might not even work
         let slice = 1/anotherVec.dx;
         let delta;
         
@@ -335,17 +313,18 @@
      */
     function Obstacle(x, y) {
         this.x      = x;
-        this.dx     = -player.dx;   // this is the use of player.dx
+        this.dx     = -player.dx;           // this is the use of player.dx
         this.y      = y;
-        this.width  = 209;
-        this.height = 128;
+        this.width  = 209;                  // I am currently using fixed size since I had trouble with writing a general expression
+        this.height = 128;                  // @see line 326
+        const OBSTACLES_AVAILABLE = 4;      // constant holding the number of images serving as obstacles, if there are more images added, raise the number by corresponding amount
         this.name   = "obs"+ getRandomInRange(1, OBSTACLES_AVAILABLE);
 
         Vector.call(this, x, y, 0, 0);
 
         this.update = function() {
-            this.dx = -player.dx;
-            this.advance();
+            this.dx = -player.dx;                                                   // in case the player has accelerated speed up the obstacles too
+            this.advance();                                                         // advances the position of the obstacle
         };
         
         this.draw = function() {
@@ -354,81 +333,113 @@
             ctx.drawImage(image, this.x, this.y, 209, 128);
         };
     };
-    Obstacle.prototype = Object.create(Vector.prototype);
+    Obstacle.prototype = Object.create(Vector.prototype);                           // makes functions from vector.prototype available to obstacles
     
-    function collisionDetection() {
-        for(let obstacle of obstacles) {
-            if(player.collisionOnX(obstacle) && player.collisionOnY(obstacle)) { 
-                gameOver();
+    function collisionDetection(obstacles) {
+        for(let obstacle of obstacles) {                                            // iterates through all obstacles currently present in the game
+            if(player.collisionOnX(obstacle) && player.collisionOnY(obstacle)) {    // if there is a collision with a single obstacle on both axis them the player has collided with that obstacle
+                gameOver();                                                         // so he/she loses
             }
         }
     };
 
-    // This function updates the position of all obstacles currently present on the canvas, removes those which are behind the figure and adds new one in their place to the right of the canvas
-    function updateObstacles() {
-        for(let i=0; i<obstacles.length; i++) {
-            obstacles[i].update();
-            obstacles[i].draw();
-        }
-
-        // if an obstacle moved too far left remove it and put a new one before the player figure
-        if(obstacles[0] && obstacles[0].x < -obstacles[0].width) {     // subtracting in the condition results in increasing the gap between two succeeding obstacles (-0 means they are right after each other)
-            obstacles.splice(0,1);
-            obstacles.push(new Obstacle(canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));
-            score++;
-        }
-    };
-    
-    function resetObstacles() {
-        obstacles = [];
-    };
-    
-    function resetGround() {
-        ground1 = [];
-        ground2 = [];
-        ground3 = [];
-    };
-    
-    function resetSwipeInput() {
-        SWIPES = "none";
-    };
-    
-    function updateLines() {
-        // drawing and updating three lines, note to self: move  to another function
-        let grounds = [ground1, ground2, ground3];
-        for(let ground of grounds) {
-            for(let i=0; i<ground.length; i++) {
-                let maxWidth = canvas.width + platDimension; // adding one to fill the gap
-                ground[i].x = (ground[i].x - player.dx + maxWidth) % maxWidth - platDimension; // result is always shifted 
-                ctx.drawImage(assetLoader.images.lineElement, ground[i].x, ground[i].y);
-            }
-        }
-    };
-    
     /**
-     * Create a parallax background
+     * operation related to obstacles is contained in this module
      */
-    let background = (function() {
-        let sky   = {};
-        this.draw = function() {
-            ctx.drawImage(assetLoader.images.bg, 0, 0);
-            sky.x -= sky.speed;
-            ctx.drawImage(assetLoader.images.sky, sky.x, sky.y);
-            ctx.drawImage(assetLoader.images.sky, sky.x + canvas.width, sky.y);
-            // If the image scrolled off the screen, reset
-            if( sky.x + assetLoader.images.sky.width <= 0) {
-                sky.x = 0;
+    let manageObstacles = (function() {
+        let obstacles = [];                 // array incorporating all obstacles present at a given point in time
+        // this function updates the position of all obstacles currently present on the canvas, removes those which are behind the figure and adds new one in their place to the right of the canvas
+        this.updateObstacles = function() {
+            for(let i=0; i<obstacles.length; i++) {     // updates and draws all obstacles currently present on the canvas using methods defined in the obstacle class
+                obstacles[i].update();
+                obstacles[i].draw();
+            }
+            // if an obstacle moved too far left remove it and put a new one before the player figure
+            if(obstacles[0] && obstacles[0].x < -obstacles[0].width) {     // subtracting in the condition results in increasing the gap between two succeeding obstacles (-0 means they are right after each other)
+                obstacles.splice(0,1);                                     // delete the leftmost obstacle in the array
+                obstacles.push(new Obstacle(canvas.width, (canvas.height*(getRandomInRange(0, 2)/3)))); // and create a new one on the right side
+                score++;                                                   // when an obstacle is removed, increment the score by one
             }
         };
-        // reset background
-        this.reset = function()  {
+        this.resetObstacles = function() {
+            obstacles = [];                                                // empties all obstacles in the array
+        };
+        this.prepareObstacles = function() {
+            for(let i=0; i<2; i++) {    // prepares two obstacles in advance and also sets it up in a way that there always will be two obstacles on the screen
+                obstacles.push(new Obstacle(i*(canvas.width)+2*canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));  // +2*canvas.width creates a beginning without any obstacles
+            }
+        };
+        this.getObstacles = function() {                                   // a getter for the obstacles array for the purposes of the collisionDetecton
+            return obstacles;
+        };
+        return {                                                           // makes code from this module accessible to code outside ofit
+            updateObstacles: this.updateObstacles,
+            resetObstacles: this.resetObstacles,
+            prepareObstacles: this.prepareObstacles,
+            getObstacles: this.getObstacles
+        };
+    })();
+
+    /**
+     * this IIFE contains line-related behaviour of the game
+     */
+    let manageLines = (function() {
+        let ground1 = [];                                               // array containing images forming the lowest line
+        let ground2 = [];                                               // array containing images forming the middle line
+        let ground3 = [];                                               // array containing images forming the uppermost line
+        const PLAT_DIMENSION = 32;                                      // constant holding dimensions of a square line element image in pixels 
+        this.updateLines = function() {                                 // updates the x, y position of individual line elements
+            let grounds = [ground1, ground2, ground3];                  // creates a 2D array matrix of the different lines
+            for(let ground of grounds) {                                // goes through all lines contained in the grounds matrix
+                for(let i=0; i<ground.length; i++) {                    // iterates through all objects in a single 1D array
+                    let maxWidth = canvas.width + PLAT_DIMENSION;       // combined width of all line elements of one row together, adding one to fill the gap on the edges of the screen
+                    ground[i].x = (ground[i].x - player.dx + maxWidth) % maxWidth - PLAT_DIMENSION;     // shifts all elements by player.dx to the left. If they are too far, put them to the far right
+                    ctx.drawImage(assetLoader.images.lineElement, ground[i].x, ground[i].y);            // actually draws the line element at the coordinates computed in the preceding step on the screen
+                }
+            }
+        };
+        this.resetLines = function() {                                  // sets all ground arrays empty. Restarts the lines
+            ground1 = [];
+            ground2 = [];
+            ground3 = [];
+        };
+        this.prepareLines = function() {                                                          // gives all line elements their default values
+            for(let i=0; i<Math.floor(canvas.width / PLAT_DIMENSION)+1; i++) {                    // prepares the three lines and creates two right to the canvas edge to prevent another from 'blipping into
+                ground1[i] = {"x": i * PLAT_DIMENSION, "y": canvas.height-PLAT_DIMENSION};        // existence' inside the canvas creating a disturbing visual effect as they appear. And this line sets up the bottommost line
+                ground2[i] = {"x": i * PLAT_DIMENSION, "y": canvas.height*(2/3)-PLAT_DIMENSION};  // middle line
+                ground3[i] = {"x": i * PLAT_DIMENSION, "y": canvas.height*(1/3)-PLAT_DIMENSION};  // uppermost line
+            }
+        };
+        return {                                                        // makes the contents of this module accessible to outside code
+            updateLines  :  this.updateLines,
+            resetLines   :  this.resetLines,
+            prepareLines :  this.prepareLines
+        };
+    })();
+
+    
+    /**
+     * creates a parallax background, supplies behaviour affecting background images
+     */
+    let manageBackground = (function() {
+        let sky   = {};                                 // creates an object which will possess attributes of background
+        this.updateBackground = function() {            // updates the position of the background and repaints it at the new coordinates
+            ctx.drawImage(assetLoader.images.bg, 0, 0); // very important, painted over the entire canvas, hides everything drawn in previous animation frame
+            sky.x -= sky.speed;                         // updates the speed of sky
+            ctx.drawImage(assetLoader.images.sky, sky.x, sky.y);                    // draws one set of clouds
+            ctx.drawImage(assetLoader.images.sky, sky.x + canvas.width, sky.y);     // draws another set of clouds right to the previous one       
+            if( sky.x + assetLoader.images.sky.width <= 0) {        // if the image scrolled off the screen, reset its x coordinate
+                sky.x = 0;                                          // together with 3 previous lines makes the moving clouds look endless
+            }
+        };        
+        this.resetBackground = function()  {            // reset background, set x and y coordinates to default value (0) as well as speed
             sky.x = 0;
             sky.y = 0;
             sky.speed = 0.2;
         };
-        return {
-            draw:  this.draw,
-            reset: this.reset
+        return {                                        // makes the methods defined in this module accessible to the outside code environment
+            updateBackground :  this.updateBackground,
+            resetBackground  :  this.resetBackground
         };
     })();
     
@@ -436,26 +447,26 @@
      * This class contains all manipulations of HTML elements performed in this script
      */
     let manipulateHTML = (function() {
-        this.manipulateAtStart = function() {
+        this.manipulateAtStart = function() {           // displays the score counter and hides the game over screen
             document.getElementById('game-over').style.display = 'none';
             document.getElementById('currentScore').style.display = '';
         };
-        this.manipulateScore = function() {
+        this.manipulateScore = function() {             // updates the score counter to display the current score value
             document.getElementById('varScore').innerHTML = score;
         };
-        this.manipulateAtEnd = function() {
+        this.manipulateAtEnd = function() {             // displays the game over screen and makes score counter vanish
             document.getElementById('currentScore').style.display = 'none';
             document.getElementById('game-over').style.display = 'block';
             document.getElementById('score').innerHTML = (+score+"!");
         };
-        this.manipulateAtRestart = function() {
-            document.getElementById('restart').addEventListener('click', startGame);
+        this.manipulateAtRestart = function() {         // makes the try again button able to restart the game
+            document.getElementById('restart').addEventListener('click', startGame); 
         };
-        return {
-            manipulateAtStart:   this.manipulateAtStart,
-            manipulateScore:     this.manipulateScore,
-            manipulateAtEnd:     this.manipulateAtEnd,
-            manipulateAtRestart: this.manipulateAtRestart
+        return {                                        // makes the functions included in this module accessible to outside code
+            manipulateAtStart   :   this.manipulateAtStart,
+            manipulateScore     :   this.manipulateScore,
+            manipulateAtEnd     :   this.manipulateAtEnd,
+            manipulateAtRestart :   this.manipulateAtRestart
         };
     })();
 
@@ -463,29 +474,21 @@
      * Start the game - reset all variables and entities, spawn platforms and water.
      */
     function startGame() {
-        manipulateHTML.manipulateAtStart();
-        stop = false;
-        score = 0;
-        accelerateThreshold = 10;
+        manipulateHTML.manipulateAtStart();     // disappears the game over screen, shows the score counter
         
-        resetGround();
-        resetObstacles();
-        //resetSwipeInput();
-        player.reset();
-        background.reset();
+        score = 0;                              // resets score because to be able to accumulate score across multiple runs would be cheating
+        stop = false;                           // assigns the boolean value false to stop variable so that the animation loop can run again
+        accelerateThreshold = 10;               // sets the threshold to the default value of 10
         
-        for(let i=0; i<Math.floor(canvas.width / platDimension)+1; i++) {  // prepares the three lines and creates two right to the canvas edge to prevent another from 'bliping into
-            ground1[i] = {"x": i * platDimension, "y": canvas.height-platDimension};        // existence inside the canvas creating a disturbing visual effect as they appear
-            ground2[i] = {"x": i * platDimension, "y": canvas.height*(2/3)-platDimension};
-            ground3[i] = {"x": i * platDimension, "y": canvas.height*(1/3)-platDimension};
-        }
+        player.reset();                         // puts player at the starting position, sets his/her speed to default (currently 8)
+        manageBackground.resetBackground();     // resets background. Simple
+        manageLines.resetLines();               // sets all three ground arrays to be empty (I dont think it is really needed, but I prefer to reset everything when a new game starts just to be sure)
+        manageObstacles.resetObstacles();       // sets the obstacles array to empty, therefore makes it ready to be refilled by manageObstacles.prepareObstacles
         
-        // note to self: in case of increasing the canvas width even further, shrink the obstacles period to smth like canvas.width*0.75, use a loop, a wait statement (setTimeout()) and a second loop
-        for(let i=0; i<2; i++) {    // prepares two obstacles in advance and also sets it up in a way that there always will be two obstacles on the screen
-            obstacles.push(new Obstacle(i*(canvas.width)+2*canvas.width, (canvas.height*(getRandomInRange(0, 2)/3))));  // +2*canvas.width creates a beginning without any obstacles
-        }        
+        manageLines.prepareLines();             // spawns the lineElements which together create a line
+        manageObstacles.prepareObstacles();     // spawns the first two obstacles in the game
         
-        animate();
+        animate();                              // initiates animations, basically starts the game itself
     };
 
     /**
@@ -493,29 +496,29 @@
      */
     function animate() {
         if(!stop) {
-            requestAnimFrame(animate);
-            background.draw();
-            updateObstacles();
-            updateLines();
-            manipulateHTML.manipulateScore();
+            requestAnimFrame(animate);          // sets up animation loop
+            manageBackground.updateBackground();// updates the background
+            manageObstacles.updateObstacles();  // moves obstacles by -player.dx and redraws them at the new location
+            manageLines.updateLines();          // updates the position of the line elements
+            manipulateHTML.manipulateScore();   // updates score counter element to reflect current score value
             
-            mouseswipedetect();
-            swipedetect();
-            collisionDetection();
+            keyboardInput();                    // accepts keyboard input
+            mouseSwipeInput();                  // accepts mouse input using swipes
+            touchSwipeInput();                  // accepts touch input from touchscreens
+            collisionDetection(manageObstacles.getObstacles());     // gets the current state of obstacles and then checks whether the player has collided with one
             
-            if(score > accelerateThreshold) player.accelerate();
-            player.update();
-            player.draw();
+            if(score > accelerateThreshold) player.accelerate();    // if the player has reached a sufficient score threshold, this expression will speed up the pace of the game
+            player.update();                    // updates the postion of the player based on the player input
+            player.draw();                      // redraws the player character at current coordinates obtained from player.update
         }
     };
     
-    function gameOver() {
-        stop = true;
-        //processTouchEvents();
-        manipulateHTML.manipulateAtEnd();
+    function gameOver() {                       // called only when the game is lost
+        stop = true;                            // stops the animation loop
+        manipulateHTML.manipulateAtEnd();       // removes score counter and displays a screen containing the achieved score and a game over message
     };
     
-    manipulateHTML.manipulateAtRestart();
+    manipulateHTML.manipulateAtRestart();       // adds a try again and connects an event listener listening for a click on it which then causes the game to restart
     
-    assetLoader.downloadAll();
-})();
+    assetLoader.downloadAll();                  // does what it says. Downloads stuff
+})();                                           // matches the IIFE declaration from line 1. We dont want anybody calling some functions from browser console
