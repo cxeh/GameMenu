@@ -131,12 +131,10 @@
             startTime = new Date().getTime();       // record time when finger first makes contact with surface
             isMouseDown = true;
             e.preventDefault();
-            e.stopPropagation();
         });
 
         canvas.addEventListener('mousemove', function(e){
             e.preventDefault();                     // prevent scrolling
-            e.stopPropagation();
         });
 
         canvas.addEventListener('mouseup', function(e){
@@ -151,7 +149,6 @@
                 isMouseDown = false;                
                 setMoveDirection(swipeDirection);
                 e.preventDefault();
-                e.stopPropagation();
             };
         });
     };
