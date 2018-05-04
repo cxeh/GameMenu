@@ -214,6 +214,7 @@
             "obs4"          : "images/obstacles/obstacle4.jpg"
         };
         let assetsLoaded = 0;                                  // number of assets currently loaded
+        
         this.totalAssets = Object.keys(this.images).length;    // total number of assets
 
         /**
