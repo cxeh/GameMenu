@@ -1,5 +1,5 @@
 /**
- * This script contains function necessary to run this game.
+ * This script contains functions necessary to run this game.
  * 
  * @author M. Horacek
  * @version 04/05 2018
@@ -59,11 +59,11 @@
         };
         let switchCounter = 0;               // initializes switchCounter which is used to set delay before line can be changed again
         player.update = function() {         // updates the player positioin based on keyboard input
-            if((/*KEY_STATUS.w || KEY_STATUS.up || */currentMoveDirection === "up") && this.y > 128 && switchCounter === 0) { // second condition prohibits the player from going up in the uppermost lane             
+            if(currentMoveDirection === "up" && this.y > 128 && switchCounter === 0) { // second condition prohibits the player from going up in the uppermost lane             
                 this.y -= canvas.height/3;   // actually moves the player by changing the y coordinate
                 switchCounter = 16;          // the higher the number, the longer the delay before being able to change the line again
                 currentMoveDirection = "none";
-            } else if((/*KEY_STATUS.s || KEY_STATUS.down || */currentMoveDirection === "down") && this.y < 320 && switchCounter === 0) {
+            } else if(currentMoveDirection === "down" && this.y < 320 && switchCounter === 0) {
                 this.y += canvas.height/3;   // same thing, just moves the player downwards
                 switchCounter = 16;
                 currentMoveDirection = "none";
